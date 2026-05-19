@@ -1,0 +1,596 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@summit/db';
+import { useContext } from 'react';
+import { UserContext } from '../lib/UserContext';
+import Sidebar from '../components/Sidebar';
+
+type Tab = 'staff' | 'clients';
+
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const ROLES = ['BCBA', 'BCaBA', 'RBT', 'Supervisor'];
+const SESSION_TYPES = ['Assessment', 'RBA Supervision', 'Direct Therapy', 'Group Therapy'];
+const SPECIALTIES_OPTIONS = ['Autism', 'Behavioral Intervention', 'Parent Training', 'Social Skills', 'VB', 'DTT', 'NET'];
+const STATUSES = ['active', 'inactive', 'waitlist'];
+
+interface Staff {
+  id: number;
+  name: string;
+  role: string;
+  specialties: string[];
+  availability: string[];
+  capacity: number;
+  booked: number;
+  location_id: number | null;
+}
+
+interface Client {
+  id: number;
+  name: string;
+  email: string;
+  session_type: string;
+  availability: string[];
+  status: string;
+  sessions: number;
+  location_id: number | null;
+}
+
+const defaultStaffForm = { name: '', role: 'RBT', specialties: [] as string[], capacity: 20 };
+const defaultClientForm = { name: '', email: '', session_type: 'Direct Therapy', status: 'active' };
+
+const roleColors: Record<string, string> = {
+  BCBA: '#7C3AED', BCaBA: '#2563EB', RBT: '#16A34A', Supervisor: '#D97706',
+};
+const statusColors: Record<string, string> = {
+  active: '#16A34A', inactive: '#6B7280', waitlist: '#D97706',
+};
+
+export default function AdminPage() {
+  const appUser = useContext(UserContext);
+  const [bookings, setBookings] = useState([]);
+  const [calendars, setCalendars] = useState([]);
+  const [tab, setTab] = useState<Tab>('staff');
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [clientList, setClientList] = useState<Client[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [staffForm, setStaffForm] = useState({ ...defaultStaffForm });
+  const [clientForm, setClientForm] = useState({ ...defaultClientForm });
+  const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Staff & Client>>({});
+
+  useEffect(() => { fetchAll(); }, []);
+
+async function fetchAll() {
+  setLoading(true);
+  const [{ data: staff }, { data: clients }, { data: bk }, { data: cal }] = await Promise.all([
+    supabase.from('staff').select('*').order('name'),
+    supabase.from('clients').select('*').order('name'),
+    supabase.from('sessions').select('*'),
+    supabase.from('calendars').select('*'),
+  ]);
+  setStaffList(staff || []);
+  setClientList(clients || []);
+  setBookings(bk || []);
+  setCalendars(cal || []);
+  setLoading(false);
+}
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  function toggleSpecialty(s: string) {
+    setStaffForm(f => ({
+      ...f,
+      specialties: f.specialties.includes(s)
+        ? f.specialties.filter(x => x !== s)
+        : [...f.specialties, s],
+    }));
+  }
+
+  async function handleCreateStaff() {
+    if (!staffForm.name.trim()) { setError('Name is required.'); return; }
+    setError(null);
+    setSaving(true);
+    const { data, error: insertErr } = await supabase
+      .from('staff')
+      .insert([{
+        name: staffForm.name.trim(),
+        role: staffForm.role,
+        specialties: staffForm.specialties,
+        capacity: staffForm.capacity,
+        booked: 0,
+        availability: [],
+      }])
+      .select()
+      .single();
+
+    if (insertErr || !data) {
+      setError(insertErr?.message || 'Insert failed.');
+      setSaving(false);
+      return;
+    }
+
+    // Auto-link: seed availability rows Mon–Sat
+    const availRows = DAYS.map(day => ({
+      staff_id: data.id,
+      day,
+      start_time: null,
+      end_time: null,
+    }));
+    await supabase.from('staff_availability').insert(availRows);
+
+    showToast(`${data.name} added`);
+    setStaffForm({ ...defaultStaffForm });
+    setShowModal(false);
+    await fetchAll();
+    setSaving(false);
+  }
+
+  async function handleCreateClient() {
+    if (!clientForm.name.trim()) { setError('Name is required.'); return; }
+    setError(null);
+    setSaving(true);
+    const { data, error: insertErr } = await supabase
+      .from('clients')
+      .insert([{
+        name: clientForm.name.trim(),
+        email: clientForm.email.trim() || null,
+        session_type: clientForm.session_type,
+        status: clientForm.status,
+        sessions: 0,
+        availability: [],
+      }])
+      .select()
+      .single();
+
+    if (insertErr || !data) {
+      setError(insertErr?.message || 'Insert failed.');
+      setSaving(false);
+      return;
+    }
+
+    // Auto-link: seed availability rows Mon–Sat
+    const availRows = DAYS.map(day => ({
+      client_id: data.id,
+      day,
+      start_time: null,
+      end_time: null,
+    }));
+    await supabase.from('client_availability').insert(availRows);
+
+    showToast(`${data.name} added`);
+    setClientForm({ ...defaultClientForm });
+    setShowModal(false);
+    await fetchAll();
+    setSaving(false);
+  }
+
+  function handleModalClose() {
+    setShowModal(false);
+    setError(null);
+    setStaffForm({ ...defaultStaffForm });
+    setClientForm({ ...defaultClientForm });
+  }
+  async function handleDelete(type: 'staff' | 'clients', id: number, name: string) {
+  if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+  if (type === 'staff') {
+    await supabase.from('staff_availability').delete().eq('staff_id', id);
+    await supabase.from('staff').delete().eq('id', id);
+  } else {
+    await supabase.from('client_availability').delete().eq('client_id', id);
+    await supabase.from('clients').delete().eq('id', id);
+  }
+  showToast(`${name} deleted`);
+  await fetchAll();
+}
+async function handleSave(type: 'staff' | 'clients', id: number) {
+  setSaving(true);
+  await supabase.from(type).update(editForm).eq('id', id);
+  setEditingId(null);
+  setEditForm({});
+  showToast('Saved');
+  await fetchAll();
+  setSaving(false);
+}
+
+  // ── Styles ──────────────────────────────────────────────────────────────────
+
+  const s = {
+    page: {
+  color: '#111827',
+} as React.CSSProperties,
+
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 32,
+    } as React.CSSProperties,
+
+    title: { fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px' } as React.CSSProperties,
+
+    tabs: {
+      display: 'flex',
+      gap: 0,
+      borderBottom: '1.5px solid #E5E7EB',
+      marginBottom: 28,
+    } as React.CSSProperties,
+
+    tab: (active: boolean): React.CSSProperties => ({
+      padding: '9px 22px',
+      background: 'none',
+      border: 'none',
+      borderBottom: active ? '2px solid #2563EB' : '2px solid transparent',
+      marginBottom: -1.5,
+      color: active ? '#2563EB' : '#6B7280',
+      fontWeight: active ? 600 : 400,
+      fontSize: 14,
+      cursor: 'pointer',
+      transition: 'color 0.15s',
+    }),
+
+    btnPrimary: {
+      padding: '9px 18px',
+      borderRadius: 8,
+      border: 'none',
+      background: '#2563EB',
+      color: 'white',
+      fontWeight: 600,
+      fontSize: 14,
+      cursor: 'pointer',
+    } as React.CSSProperties,
+    btnDelete: {
+      padding: '4px 9px',
+      borderRadius: 6,
+      border: '1px solid #FECACA',
+      background: '#FEF2F2',
+      color: '#DC2626',
+      fontSize: 13,
+      cursor: 'pointer',
+      lineHeight: 1,
+    } as React.CSSProperties,
+
+    btnGhost: {
+      padding: '9px 18px',
+      borderRadius: 8,
+      border: '1px solid #E5E7EB',
+      background: 'white',
+      color: '#374151',
+      fontWeight: 500,
+      fontSize: 14,
+      cursor: 'pointer',
+    } as React.CSSProperties,
+
+    card: {
+      background: 'white',
+      border: '1px solid #E5E7EB',
+      borderRadius: 10,
+      padding: '14px 20px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    } as React.CSSProperties,
+
+    cardName: { fontWeight: 600, fontSize: 15 } as React.CSSProperties,
+
+    cardSub: {
+      color: '#6B7280',
+      fontSize: 13,
+      marginTop: 2,
+    } as React.CSSProperties,
+
+    badge: (color: string): React.CSSProperties => ({
+      background: color + '1a',
+      color,
+      padding: '3px 11px',
+      borderRadius: 20,
+      fontSize: 12,
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    }),
+
+    empty: {
+      color: '#9CA3AF',
+      textAlign: 'center',
+      marginTop: 64,
+      fontSize: 14,
+    } as React.CSSProperties,
+
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    } as React.CSSProperties,
+
+    modal: {
+      background: 'white',
+      borderRadius: 14,
+      padding: 32,
+      width: 460,
+      maxHeight: '85vh',
+      overflowY: 'auto',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+    } as React.CSSProperties,
+
+    modalTitle: { fontSize: 20, fontWeight: 700, marginBottom: 24, letterSpacing: '-0.3px' } as React.CSSProperties,
+
+    label: {
+      display: 'block',
+      fontSize: 13,
+      fontWeight: 500,
+      color: '#374151',
+      marginBottom: 6,
+    } as React.CSSProperties,
+
+    input: {
+      width: '100%',
+      padding: '9px 12px',
+      borderRadius: 8,
+      border: '1px solid #D1D5DB',
+      fontSize: 14,
+      marginBottom: 18,
+      boxSizing: 'border-box',
+      outline: 'none',
+      fontFamily: 'Inter, sans-serif',
+    } as React.CSSProperties,
+
+    select: {
+      width: '100%',
+      padding: '9px 12px',
+      borderRadius: 8,
+      border: '1px solid #D1D5DB',
+      fontSize: 14,
+      marginBottom: 18,
+      boxSizing: 'border-box',
+      background: 'white',
+      fontFamily: 'Inter, sans-serif',
+    } as React.CSSProperties,
+
+    chipRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 } as React.CSSProperties,
+
+    chip: (active: boolean): React.CSSProperties => ({
+      padding: '4px 13px',
+      borderRadius: 20,
+      fontSize: 13,
+      cursor: 'pointer',
+      border: active ? '1.5px solid #2563EB' : '1px solid #E5E7EB',
+      background: active ? '#EFF6FF' : 'white',
+      color: active ? '#2563EB' : '#6B7280',
+      userSelect: 'none',
+      transition: 'all 0.1s',
+    }),
+
+    errorMsg: {
+      color: '#DC2626',
+      fontSize: 13,
+      marginBottom: 16,
+      padding: '8px 12px',
+      background: '#FEF2F2',
+      borderRadius: 8,
+    } as React.CSSProperties,
+
+    modalFooter: {
+      display: 'flex',
+      gap: 10,
+      justifyContent: 'flex-end',
+      marginTop: 8,
+    } as React.CSSProperties,
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-background-tertiary)', fontFamily: 'Inter, sans-serif', fontSize: 16 }}>
+      <Sidebar view="admin" onNavigate={() => {}} appUser={appUser} bookings={bookings} calendars={calendars} />
+      <main style={{ flex: 1, padding: '32px 36px', overflowY: 'auto' }}>
+      <div style={s.page}>   {/* keep but remove padding/maxWidth since main handles it */}
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24,
+          background: '#111827', color: 'white',
+          padding: '12px 20px', borderRadius: 10,
+          fontSize: 14, zIndex: 2000,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+        }}>
+          ✓ {toast}
+        </div>
+      )}
+
+      <div style={s.header}>
+        <h1 style={s.title}>User Management</h1>
+        <button style={s.btnPrimary} onClick={() => setShowModal(true)}>
+          + New {tab === 'staff' ? 'Staff' : 'Client'}
+        </button>
+      </div>
+
+      <div style={s.tabs}>
+        <button style={s.tab(tab === 'staff')} onClick={() => setTab('staff')}>
+          Staff ({staffList.length})
+        </button>
+        <button style={s.tab(tab === 'clients')} onClick={() => setTab('clients')}>
+          Clients ({clientList.length})
+        </button>
+      </div>
+
+      {loading ? (
+        <p style={s.empty}>Loading...</p>
+      ) : tab === 'staff' ? (
+        staffList.length === 0
+          ? <p style={s.empty}>No staff yet — add your first member.</p>
+          : staffList.map(member => (
+            <div key={member.id} style={s.card}>
+  {editingId === member.id ? (
+    <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input style={{ ...s.input, marginBottom: 0, width: 160 }} value={editForm.name ?? member.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+      <select style={{ ...s.select, marginBottom: 0, width: 120 }} value={editForm.role ?? member.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+        {ROLES.map(r => <option key={r}>{r}</option>)}
+      </select>
+      <input style={{ ...s.input, marginBottom: 0, width: 80 }} type="number" value={editForm.capacity ?? member.capacity} onChange={e => setEditForm(f => ({ ...f, capacity: Number(e.target.value) }))} />
+      <button style={s.btnPrimary} onClick={() => handleSave('staff', member.id)} disabled={saving}>Save</button>
+      <button style={s.btnGhost} onClick={() => { setEditingId(null); setEditForm({}); }}>Cancel</button>
+    </div>
+  ) : (
+    <>
+      <div>
+        <div style={s.cardName}>{member.name}</div>
+        <div style={s.cardSub}>{member.booked ?? 0}/{member.capacity ?? '—'} sessions booked{member.specialties?.length ? ' · ' + member.specialties.join(', ') : ''}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={s.badge(roleColors[member.role] || '#6B7280')}>{member.role}</span>
+        <button style={s.btnGhost} onClick={() => { setEditingId(member.id); setEditForm({}); }}>Edit</button>
+        <button style={s.btnDelete} onClick={() => handleDelete('staff', member.id, member.name)}>✕</button>
+      </div>
+    </>
+  )}
+</div>
+          ))
+      ) : (
+        clientList.length === 0
+          ? <p style={s.empty}>No clients yet — add your first.</p>
+          : clientList.map(client => (
+            <div key={client.id} style={s.card}>
+  {editingId === client.id ? (
+    <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input style={{ ...s.input, marginBottom: 0, width: 160 }} value={editForm.name ?? client.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+      <input style={{ ...s.input, marginBottom: 0, width: 180 }} type="email" value={editForm.email ?? client.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+      <select style={{ ...s.select, marginBottom: 0, width: 140 }} value={editForm.status ?? client.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+        {STATUSES.map(st => <option key={st}>{st}</option>)}
+      </select>
+      <button style={s.btnPrimary} onClick={() => handleSave('clients', client.id)} disabled={saving}>Save</button>
+      <button style={s.btnGhost} onClick={() => { setEditingId(null); setEditForm({}); }}>Cancel</button>
+    </div>
+  ) : (
+    <>
+      <div>
+        <div style={s.cardName}>{client.name}</div>
+        <div style={s.cardSub}>{client.email || 'No email'} · {client.session_type}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={s.badge(statusColors[client.status] || '#6B7280')}>{client.status}</span>
+        <button style={s.btnGhost} onClick={() => { setEditingId(client.id); setEditForm({}); }}>Edit</button>
+        <button style={s.btnDelete} onClick={() => handleDelete('clients', client.id, client.name)}>✕</button>
+      </div>
+    </>
+  )}
+</div>
+          ))
+      )}
+
+      {/* Modal */}
+      {showModal && (
+        <div style={s.overlay} onClick={e => e.target === e.currentTarget && handleModalClose()}>
+          <div style={s.modal}>
+            <h2 style={s.modalTitle}>
+              {tab === 'staff' ? 'Add Staff Member' : 'Add Client'}
+            </h2>
+
+            {error && <div style={s.errorMsg}>{error}</div>}
+
+            {tab === 'staff' ? (
+              <>
+                <label style={s.label}>Name *</label>
+                <input
+                  style={s.input}
+                  value={staffForm.name}
+                  onChange={e => setStaffForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name"
+                  autoFocus
+                />
+
+                <label style={s.label}>Role</label>
+                <select
+                  style={s.select}
+                  value={staffForm.role}
+                  onChange={e => setStaffForm(f => ({ ...f, role: e.target.value }))}
+                >
+                  {ROLES.map(r => <option key={r}>{r}</option>)}
+                </select>
+
+                <label style={s.label}>Weekly Session Capacity</label>
+                <input
+                  style={s.input}
+                  type="number"
+                  value={staffForm.capacity}
+                  onChange={e => setStaffForm(f => ({ ...f, capacity: Number(e.target.value) }))}
+                  min={1}
+                  max={60}
+                />
+
+                <label style={s.label}>Specialties</label>
+                <div style={s.chipRow}>
+                  {SPECIALTIES_OPTIONS.map(sp => (
+                    <span key={sp} style={s.chip(staffForm.specialties.includes(sp))} onClick={() => toggleSpecialty(sp)}>
+                      {sp}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <label style={s.label}>Name *</label>
+                <input
+                  style={s.input}
+                  value={clientForm.name}
+                  onChange={e => setClientForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name"
+                  autoFocus
+                />
+
+                <label style={s.label}>Email</label>
+                <input
+                  style={s.input}
+                  type="email"
+                  value={clientForm.email}
+                  onChange={e => setClientForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="client@email.com"
+                />
+
+                <label style={s.label}>Session Type</label>
+                <select
+                  style={s.select}
+                  value={clientForm.session_type}
+                  onChange={e => setClientForm(f => ({ ...f, session_type: e.target.value }))}
+                >
+                  {SESSION_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+
+                <label style={s.label}>Status</label>
+                <select
+                  style={s.select}
+                  value={clientForm.status}
+                  onChange={e => setClientForm(f => ({ ...f, status: e.target.value }))}
+                >
+                  {STATUSES.map(st => <option key={st}>{st}</option>)}
+                </select>
+              </>
+            )}
+
+            <div style={s.modalFooter}>
+              <button style={s.btnGhost} onClick={handleModalClose}>Cancel</button>
+              <button
+                style={{ ...s.btnPrimary, opacity: saving ? 0.7 : 1 }}
+                onClick={tab === 'staff' ? handleCreateStaff : handleCreateClient}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Create & Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+    </main>
+    </div>
+  );
+}

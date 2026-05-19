@@ -1,0 +1,324 @@
+/* ─────────────────────────────────────────────────────────
+   Summit Scheduler — Design System
+   Fonts: Bricolage Grotesque (display) + Hanken Grotesk (body)
+   Theme: Light · Warm · Trustworthy · Calm
+   ───────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Hanken+Grotesk:ital,wght@0,300..800;1,300..500&display=swap');
+
+:root {
+  /* ── Brand scale (OKLCH — perceptually uniform) ──────── */
+  --brand-50:  oklch(97%  0.014 192);
+  --brand-100: oklch(92%  0.035 191);
+  --brand-200: oklch(83%  0.075 190);
+  --brand-300: oklch(73%  0.110 189);
+  --brand-400: oklch(64%  0.135 188);   /* logo teal-green  */
+  --brand-500: oklch(55%  0.130 194);   /* primary action   */
+  --brand-600: oklch(46%  0.115 200);   /* hover            */
+  --brand-700: oklch(37%  0.095 208);   /* logo dark navy   */
+  --brand-800: oklch(28%  0.072 213);
+  --brand-900: oklch(20%  0.050 215);
+
+  /* ── Surface & Background ────────────────────────────── */
+  --color-background-primary:   oklch(100%  0      0  );   /* card / panel white  */
+  --color-background-secondary: oklch(97.5% 0.010 192);   /* sidebar, alt rows   */
+  --color-background-tertiary:  oklch(94.5% 0.016 192);   /* page background     */
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --color-border-primary:   var(--brand-500);
+  --color-border-secondary: oklch(84%  0.018 192);
+  --color-border-tertiary:  oklch(91%  0.012 192);
+
+  /* ── Text ────────────────────────────────────────────── */
+  --color-text-primary:   oklch(21%  0.042 212);   /* near-black, teal-tinted */
+  --color-text-secondary: oklch(47%  0.048 200);
+  --color-text-tertiary:  oklch(63%  0.034 196);
+
+  /* ── Semantic status ─────────────────────────────────── */
+  --color-success:        oklch(52%  0.148 152);
+  --color-success-subtle: oklch(94%  0.040 152);
+  --color-warning:        oklch(68%  0.160  68);
+  --color-warning-subtle: oklch(95%  0.045  68);
+  --color-error:          oklch(54%  0.205  25);
+  --color-error-subtle:   oklch(96%  0.035  25);
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body:    'Hanken Grotesk', system-ui, sans-serif;
+
+  /* Fixed rem scale for app UI (no fluid clamp in product UI) */
+  --text-2xs: 0.6875rem;   /*  11px */
+  --text-xs:  0.75rem;     /*  12px */
+  --text-sm:  0.8125rem;   /*  13px */
+  --text-base:0.9375rem;   /*  15px */
+  --text-md:  1rem;        /*  16px */
+  --text-lg:  1.125rem;    /*  18px */
+  --text-xl:  1.25rem;     /*  20px */
+  --text-2xl: 1.5rem;      /*  24px */
+  --text-3xl: 1.875rem;    /*  30px */
+  --text-4xl: 2.25rem;     /*  36px */
+
+  /* ── Spacing (4pt scale) ─────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Radius ──────────────────────────────────────────── */
+  --radius-xs:   4px;
+  --radius-sm:   7px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows (tinted toward brand hue) ───────────────── */
+  --shadow-xs: 0 1px 2px oklch(21% 0.042 212 / 0.05);
+  --shadow-sm: 0 1px 3px oklch(21% 0.042 212 / 0.07),
+               0 1px 2px oklch(21% 0.042 212 / 0.04);
+  --shadow-md: 0 4px 12px oklch(21% 0.042 212 / 0.09),
+               0 2px 4px  oklch(21% 0.042 212 / 0.04);
+  --shadow-lg: 0 12px 32px oklch(21% 0.042 212 / 0.11),
+               0 4px  8px  oklch(21% 0.042 212 / 0.05);
+  --shadow-xl: 0 24px 48px oklch(21% 0.042 212 / 0.14),
+               0 8px  16px oklch(21% 0.042 212 / 0.06);
+
+  /* ── Motion ──────────────────────────────────────────── */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast:  110ms;
+  --duration-base:  190ms;
+  --duration-slow:  340ms;
+}
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background: var(--color-background-tertiary);
+  line-height: 1.55;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+/* ── Focus ───────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Selection ───────────────────────────────────────────── */
+::selection {
+  background: var(--brand-100);
+  color: var(--brand-800);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-secondary);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-tertiary); }
+
+/* ── Base elements ───────────────────────────────────────── */
+select, input, textarea, button {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+}
+
+select:focus, input:focus, textarea:focus {
+  border-color: var(--brand-400) !important;
+  box-shadow: 0 0 0 3px oklch(64% 0.135 188 / 0.12) !important;
+}
+
+button {
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out-quart);
+}
+
+button:active { transform: scale(0.98); }
+
+a {
+  color: var(--brand-600);
+  text-decoration: none;
+}
+
+a:hover { color: var(--brand-700); }
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Sidebar nav items ───────────────────────────────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  font-family: var(--font-body);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out-quart),
+              color     var(--duration-fast) var(--ease-out-quart);
+}
+
+.nav-item:hover {
+  background: var(--brand-50);
+  color: var(--color-text-primary);
+}
+
+.nav-item.active {
+  background: var(--brand-100);
+  color: var(--brand-700);
+  font-weight: 500;
+}
+
+/* ── Card ────────────────────────────────────────────────── */
+.card {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── Badge ───────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-family: var(--font-body);
+}
+
+/* ── Button base ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out-quart);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--brand-500);
+  color: white;
+  box-shadow: 0 1px 3px oklch(55% 0.130 194 / 0.30);
+}
+
+.btn-primary:hover {
+  background: var(--brand-600);
+  box-shadow: 0 2px 6px oklch(55% 0.130 194 / 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: white;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-tertiary);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-ghost:hover {
+  background: var(--color-background-secondary);
+  border-color: var(--color-border-secondary);
+}
+
+/* ── Input / Select ──────────────────────────────────────── */
+.input, .select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-tertiary);
+  background: white;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out-quart),
+              box-shadow   var(--duration-fast) var(--ease-out-quart);
+}
+
+.input:focus, .select:focus {
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 3px oklch(64% 0.135 188 / 0.12);
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--color-border-tertiary);
+  border: none;
+}
+
+/* ── Reduced motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

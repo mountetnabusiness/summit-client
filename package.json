@@ -1,0 +1,14 @@
+{
+  "name": "summit-client",
+  "private": true,
+  "packageManager": "pnpm@11.1.3",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "latest"
+  }
+}
