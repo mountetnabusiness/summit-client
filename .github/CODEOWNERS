@@ -1,0 +1,5 @@
+/apps/scheduler/          @mountetnabusiness
+/apps/family-portal/      @mountetnabusiness
+/apps/clinician-portal/   @mountetnabusiness
+/apps/employee-portal/    @mountetnabusiness
+/packages/                @mountetnabusiness
