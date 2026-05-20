@@ -42,3 +42,8 @@ next-env.d.ts
 
 sync.ps1
 sync.exe
+dump.txt
+index_dump.txt
+sync.exe
+sync.ps1
+commit.ps1
