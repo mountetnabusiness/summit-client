@@ -2,5 +2,8 @@
   "name": "@summit/db",
   "version": "0.0.1",
   "main": "./index.ts",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3"
+  }
 }

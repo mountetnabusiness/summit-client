@@ -9,9 +9,10 @@
   },
   "dependencies": {
     "@summit/db": "workspace:*",
+    "@summit/nav": "workspace:*",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/auth-helpers-react": "^0.15.0",
-    "@supabase/ssr": "^0.10.2",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.103.0",
     "next": "16.2.1",
     "react": "19.2.4",
@@ -21,5 +22,4 @@
     "@types/react": "19.2.14",
     "typescript": "6.0.2"
   }
-  
 }

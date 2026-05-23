@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import { useUser } from "../lib/useUser";
 import { UserContext } from "../lib/UserContext";
+import { AppNav } from '@summit/nav';
 
 export default function App({ Component, pageProps }) {
   const { user, loading, signOut } = useUser();
@@ -8,8 +9,11 @@ export default function App({ Component, pageProps }) {
   if (loading) return <div style={{ padding: 40, fontFamily: "Inter, sans-serif" }}>Loading...</div>;
 
   return (
-    <UserContext.Provider value={user}>
-      <Component {...pageProps} signOut={signOut} />
-    </UserContext.Provider>
+    <>
+      <AppNav activeKey="scheduler" />
+      <UserContext.Provider value={user}>
+        <Component {...pageProps} signOut={signOut} />
+      </UserContext.Provider>
+    </>
   );
 }
