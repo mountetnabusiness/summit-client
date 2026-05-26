@@ -40,3 +40,49 @@ a {
     color-scheme: dark;
   }
 }
+
+/* ── Landing page additions ── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.an1 { animation: fadeUp .6s ease both; }
+.an2 { animation: fadeUp .6s .12s ease both; }
+.an3 { animation: fadeUp .6s .25s ease both; }
+.an4 { animation: fadeUp .6s .40s ease both; }
+.an5 { animation: fadeUp .6s .55s ease both; }
+
+/* Gradient text — needs nested <span>, can't be inline */
+.grad-text {
+  background: linear-gradient(135deg, #3BBDB4 0%, #2B8EC4 55%, #1A4D6E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hover states */
+.nav-link-item:hover  { color: #1A4D6E !important; }
+.feature-card         { transition: transform .2s, box-shadow .2s; }
+.feature-card:hover   { transform: translateY(-5px); box-shadow: 0 16px 44px rgba(26,77,110,.1) !important; }
+
+/* Pseudo-elements */
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(59,189,180,.09) 0%, transparent 70%);
+  pointer-events: none;
+}
+.testi-bg::before {
+  content: '"';
+  position: absolute;
+  font-family: 'Sora', sans-serif;
+  font-size: 18rem;
+  font-weight: 800;
+  color: rgba(255,255,255,.025);
+  top: -40px; left: 30px;
+  line-height: 1;
+  pointer-events: none;
+}
